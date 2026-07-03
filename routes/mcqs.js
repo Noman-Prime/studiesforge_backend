@@ -18,4 +18,5 @@ export default mcqsRouter
 // http://localhost:5000/api/v1/mcqs/topic/:id  ---> topic wise mcqs
 // http://localhost:5000/api/v1/mcqs/subject/:id  ---> topic wise mcqs
 // http://localhost:5000/api/v1/mcqs/create
-// http://localhost:5000/api/v1/mcqs/delete
+// http://localhost:5000/api/v1/mcqs/delete/:id
+// http://localhost:5000/api/v1/mcqs/get/:id

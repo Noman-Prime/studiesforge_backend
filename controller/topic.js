@@ -65,52 +65,52 @@ export const updateTopic = async (req, res) => {
             });
         }
 
-        let imageData = null;
-        let videoData = null;
+        let updateData = {
+            ...req.body
+        };
 
-        const currentImage = currentTopic?.image?.public_id;
-        const currentVideo = currentTopic?.video?.public_id;
-        if (req.files?.image?.[0]) {
-            const imageFile = req.files.image[0];
+        // Image
+        if (req.files?.image?.length > 0) {
+            if (currentTopic.image?.public_id) {
+                await deleteMedia(currentTopic.image.public_id);
+            }
 
-            const result = await uploadMedia(imageFile.buffer, "image");
+            const result = await uploadMedia(
+                req.files.image[0].buffer,
+                "image"
+            );
 
-            imageData = {
+            updateData.image = {
                 public_id: result.public_id,
                 url: result.url
             };
-
-            if (currentImage) {
-                await deleteMedia(currentImage);
-            }
         }
-        if (req.files?.video?.[0]) {
-            const videoFile = req.files.video[0];
 
-            const result = await uploadMedia(videoFile.buffer, "video");
+        // Video
+        if (req.files?.video?.length > 0) {
+            if (currentTopic.video?.public_id) {
+                await deleteMedia(currentTopic.video.public_id);
+            }
 
-            videoData = {
+            const result = await uploadMedia(
+                req.files.video[0].buffer,
+                "video"
+            );
+
+            updateData.video = {
                 public_id: result.public_id,
                 url: result.url
             };
-
-            if (currentVideo) {
-                await deleteMedia(currentVideo);
-            }
         }
 
         const newTopic = await topic.findByIdAndUpdate(
             id,
-            {
-                ...req.body,
-                ...(image && { imageData }),
-                ...(video && { videoData })
-            },
+            updateData,
             {
                 new: true,
                 runValidators: true
             }
-        );
+        ).populate("subject");
 
         return res.status(200).json({
             success: true,
@@ -119,6 +119,7 @@ export const updateTopic = async (req, res) => {
 
     } catch (error) {
         console.log(error);
+
         return res.status(500).json({
             success: false,
             message: "Something went wrong",
@@ -216,8 +217,31 @@ export const getTopic = async (req, res) => {
 
 export const subjectTopic = async (req, res) => {
     try {
-        const { subjectId } = req.params
+        const { id } = req.params
         const Topics = await topic.find({ subject: subjectId })
+        if (!Topics || Topics.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No Topic is found"
+            })
+        }
+        return res.status(200).json({
+            success: true,
+            topic: Topics
+        })
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong"
+        })
+    }
+}
+
+export const chapterWiseTopics = async (req, res) => {
+    try {
+        const { id } = req.params
+        const Topics = await topic.find({ chapter: id })
         if (!Topics || Topics.length === 0) {
             return res.status(404).json({
                 success: false,

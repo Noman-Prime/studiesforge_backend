@@ -2,6 +2,7 @@ import mcqs from "../models/mcqs.js"
 
 export const createMCQS = async (req, res) => {
     try {
+        console.log(req.body);
         const MCQS = await mcqs.create(req.body)
         await MCQS.populate("subject topic")
         if (!MCQS) {

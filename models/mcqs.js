@@ -7,7 +7,11 @@ const mcqSchema = new mongoose.Schema(
             ref: "Subject",
             required: true
         },
-
+        chapter: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Chapter",
+            required: true
+        },
         topic: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Topic",

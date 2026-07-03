@@ -6,6 +6,11 @@ const topicSchema = new mongoose.Schema({
         ref: "Subject",
         required: true
     },
+    chapter: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Chapter",
+        recquired: true
+    },
     title: {
         type: String,
         required: true,
