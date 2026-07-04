@@ -12,9 +12,12 @@ import userRouter from "./routes/user.js";
 
 const app = express();
 app.use(express.json());
-app.options(/.*/, cors())
 app.use(cors({
-  origin: ["http://localhost:3000", "https://studiesforge.com"],
+  origin: [
+    "http://localhost:3000",
+    "https://studiesforge.com",
+    "https://www.studiesforge.com",
+  ],
   credentials: true,
 }))
 app.use("/api/v1/slider", sliderRouter);
