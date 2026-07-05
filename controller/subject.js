@@ -1,4 +1,6 @@
+import chapter from "../models/chapter.js";
 import subject from "../models/subjects.js";
+import topic from "../models/topic.js";
 import { deleteMedia, uploadMedia } from "../utils/cloudinary.js";
 
 export const createSubject = async (req, res) => {
@@ -10,10 +12,24 @@ export const createSubject = async (req, res) => {
             });
         }
 
+        const name = req.body.name.trim();
+
+        const existingSubject = await subject.findOne({
+            name: { $regex: new RegExp(`^${name}$`, "i") }
+        });
+
+        if (existingSubject) {
+            return res.status(400).json({
+                success: false,
+                message: "Subject with this name already exists"
+            });
+        }
+
         const imageData = await uploadMedia(req.file.buffer, "image");
 
         const Subject = await subject.create({
             ...req.body,
+            name,
             image: {
                 public_id: imageData.public_id,
                 url: imageData.url
@@ -55,6 +71,20 @@ export const updateSubject = async (req, res) => {
             });
         }
 
+        const name = req.body.name.trim();
+
+        const existingSubject = await subject.findOne({
+            _id: { $ne: id },
+            name: { $regex: new RegExp(`^${name}$`, "i") }
+        });
+
+        if (existingSubject) {
+            return res.status(400).json({
+                success: false,
+                message: "Subject with this name already exists"
+            });
+        }
+
         let imageData = null;
 
         if (req.file) {
@@ -68,7 +98,8 @@ export const updateSubject = async (req, res) => {
         }
 
         const updatedData = {
-            ...req.body
+            ...req.body,
+            name
         };
 
         if (imageData) {
@@ -118,29 +149,37 @@ export const deleteSubject = async (req, res) => {
         if (!Subject) {
             return res.status(404).json({
                 success: false,
-                message: "Subject is not found"
+                message: "Subject not found"
             });
         }
 
-        const oldImage = Subject?.image?.public_id;
+        const chapterExists = await chapter.exists({ subject: id });
 
-        if (oldImage) {
-            await deleteMedia(oldImage);
+        if (chapterExists) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot delete this subject because one or more chapters are attached to it."
+            });
+        }
+
+        if (Subject.image?.public_id) {
+            await deleteMedia(Subject.image.public_id);
         }
 
         await subject.findByIdAndDelete(id);
 
         return res.status(200).json({
             success: true,
-            message: "subject is deleted"
+            message: "Subject deleted successfully."
         });
 
     } catch (error) {
         console.log(error);
+
         return res.status(500).json({
             success: false,
             message: "Something went wrong",
-            issue: error
+            issue: error.message
         });
     }
 };

@@ -9,11 +9,27 @@ export const createSlider = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "Media is required to create Slider"
-            })
+            });
         }
+
+        const text = req.body.text.trim();
+
+        const existingSlider = await slider.findOne({
+            text: { $regex: new RegExp(`^${text}$`, "i") }
+        });
+
+        if (existingSlider) {
+            return res.status(400).json({
+                success: false,
+                message: "Slider with this text already exists."
+            });
+        }
+
         const imageData = await uploadMedia(req.file.buffer, "image");
+
         const Slider = await slider.create({
             ...req.body,
+            text,
             image: {
                 public_id: imageData.public_id,
                 url: imageData.url
@@ -27,6 +43,7 @@ export const createSlider = async (req, res) => {
                 slider: Slider
             });
         }
+
     } catch (error) {
         console.log(error);
         return res.status(500).json({
@@ -34,10 +51,9 @@ export const createSlider = async (req, res) => {
             message: "Something went wrong"
         });
     }
-}
+};
 
 export const updateSlider = async (req, res) => {
-
     try {
         const { id } = req.params;
 
@@ -50,12 +66,29 @@ export const updateSlider = async (req, res) => {
             });
         }
 
+        const text = req.body.text.trim();
+
+        const existingSlider = await slider.findOne({
+            _id: { $ne: id },
+            text: { $regex: new RegExp(`^${text}$`, "i") }
+        });
+
+        if (existingSlider) {
+            return res.status(400).json({
+                success: false,
+                message: "Slider with this text already exists."
+            });
+        }
+
         let updatedImage = currentSlider.image;
+
         if (req.file) {
             const oldPublicId = currentSlider.image?.public_id;
+
             if (oldPublicId) {
                 await deleteMedia(oldPublicId);
             }
+
             const imageData = await uploadMedia(
                 req.file.buffer,
                 "image"
@@ -71,6 +104,7 @@ export const updateSlider = async (req, res) => {
             id,
             {
                 ...req.body,
+                text,
                 image: updatedImage
             },
             {
