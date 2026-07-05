@@ -1,27 +1,8 @@
 import chapter from "../models/chapter.js";
-import topic from "../models/topic.js";
 
 export const createChapter = async (req, res) => {
     try {
-        const name = req.body.name.trim();
-
-        const existingChapter = await chapter.findOne({
-            subject: req.body.subject,
-            name: { $regex: new RegExp(`^${name}$`, "i") }
-        });
-
-        if (existingChapter) {
-            return res.status(400).json({
-                success: false,
-                message: "Chapter with this name already exists in this subject."
-            });
-        }
-
-        const Chapter = await chapter.create({
-            ...req.body,
-            name
-        });
-
+        const Chapter = await chapter.create(req.body);
         return res.status(201).json({
             success: true,
             chapter: Chapter,
@@ -38,7 +19,7 @@ export const createChapter = async (req, res) => {
 export const findChapter = async (req, res) => {
     try {
         const { id } = req.params;
-        const Chapter = await chapter.findById(id);
+        const Chapter = await chapter.findById(id)
         if (!Chapter) {
             return res.status(404).json({
                 success: false,
@@ -61,43 +42,13 @@ export const findChapter = async (req, res) => {
 export const updateChapter = async (req, res) => {
     try {
         const { id } = req.params;
-
-        const oldChapter = await chapter.findById(id);
-
-        if (!oldChapter) {
+        const Chapter = await chapter.findByIdAndUpdate(id, req.body,{ new: true, runValidators: true,} )
+        if (!Chapter) {
             return res.status(404).json({
                 success: false,
                 message: "Chapter not found",
             });
         }
-
-        const name = req.body.name.trim();
-
-        const existingChapter = await chapter.findOne({
-            _id: { $ne: id },
-            subject: req.body.subject,
-            name: { $regex: new RegExp(`^${name}$`, "i") }
-        });
-
-        if (existingChapter) {
-            return res.status(400).json({
-                success: false,
-                message: "Chapter with this name already exists in this subject."
-            });
-        }
-
-        const Chapter = await chapter.findByIdAndUpdate(
-            id,
-            {
-                ...req.body,
-                name
-            },
-            {
-                new: true,
-                runValidators: true,
-            }
-        );
-
         return res.status(200).json({
             success: true,
             chapter: Chapter,
@@ -154,15 +105,13 @@ export const deleteChapter = async (req, res) => {
 export const subjectByChapter = async (req, res) => {
     try {
         const { id } = req.params;
-        const Chapters = await chapter.find({ subject: id });
-
+        const Chapters = await chapter.find({ subject: id })
         if (Chapters.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: "No chapters found",
             });
         }
-
         return res.status(200).json({
             success: true,
             chapter: Chapters,

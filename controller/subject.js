@@ -1,128 +1,212 @@
-import mcqs from "../models/mcqs.js";
+import chapter from "../models/chapter.js";
 import subject from "../models/subjects.js";
 import topic from "../models/topic.js";
 import { deleteMedia, uploadMedia } from "../utils/cloudinary.js";
 
-export const createTopic = async (req, res) => {
+export const createSubject = async (req, res) => {
     try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "Image is required"
+            });
+        }
+
+        const imageData = await uploadMedia(req.file.buffer, "image");
+
+        const Subject = await subject.create({
+            ...req.body,
+            image: {
+                public_id: imageData.public_id,
+                url: imageData.url
+            }
+        });
+
+        if (!Subject) {
+            return res.status(404).json({
+                success: false,
+                message: "Subject is not created"
+            });
+        }
+
+        return res.status(201).json({
+            success: true,
+            subject: Subject
+        });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong",
+            issue: error
+        });
+    }
+};
+
+export const updateSubject = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const oldSubject = await subject.findById(id);
+
+        if (!oldSubject) {
+            return res.status(404).json({
+                success: false,
+                message: "No Subject is found"
+            });
+        }
+
         let imageData = null;
-        let videoData = null;
-        if (req.files?.image?.length > 0) {
-            const result = await uploadMedia(req.files.image[0].buffer, "image");
-            imageData = { public_id: result.public_id, url: result.url };
+
+        if (req.file) {
+            const oldImage = oldSubject?.image?.public_id;
+
+            if (oldImage) {
+                await deleteMedia(oldImage);
+            }
+
+            imageData = await uploadMedia(req.file.buffer, "image");
         }
-        if (req.files?.video?.length > 0) {
-            const result = await uploadMedia(req.files.video[0].buffer, "video");
-            videoData = { public_id: result.public_id, url: result.url };
+
+        const updatedData = {
+            ...req.body
+        };
+
+        if (imageData) {
+            updatedData.image = {
+                public_id: imageData.public_id,
+                url: imageData.url
+            };
         }
-        const Topic = await topic.create({ ...req.body, image: imageData, video: videoData });
-        await Topic.populate("subject");
-        return res.status(201).json({ success: true, topic: Topic });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ success: false, message: "Something went wrong", issue: error.message });
-    }
-};
 
-export const updateTopic = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const currentTopic = await topic.findById(id);
-        if (!currentTopic) return res.status(404).json({ success: false, message: "Topic not found" });
-        let updateData = { ...req.body };
-        if (req.files?.image?.length > 0) {
-            if (currentTopic.image?.public_id) await deleteMedia(currentTopic.image.public_id);
-            const result = await uploadMedia(req.files.image[0].buffer, "image");
-            updateData.image = { public_id: result.public_id, url: result.url };
+        const newSubject = await subject.findByIdAndUpdate(
+            id,
+            updatedData,
+            {
+                new: true,
+                runValidators: true
+            }
+        );
+
+        if (!newSubject) {
+            return res.status(400).json({
+                success: false,
+                message: "Subject is not updated"
+            });
         }
-        if (req.files?.video?.length > 0) {
-            if (currentTopic.video?.public_id) await deleteMedia(currentTopic.video.public_id);
-            const result = await uploadMedia(req.files.video[0].buffer, "video");
-            updateData.video = { public_id: result.public_id, url: result.url };
+
+        return res.status(200).json({
+            success: true,
+            subject: newSubject
+        });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong",
+            issue: error
+        });
+    }
+};
+
+export const deleteSubject = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const Subject = await subject.findById(id);
+
+        if (!Subject) {
+            return res.status(404).json({
+                success: false,
+                message: "Subject not found"
+            });
         }
-        const newTopic = await topic.findByIdAndUpdate(id, updateData, { new: true, runValidators: true }).populate("subject");
-        return res.status(200).json({ success: true, topic: newTopic });
+
+        const chapterExists = await chapter.exists({ subject: id });
+
+        if (chapterExists) {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot delete this subject because one or more chapters are attached to it."
+            });
+        }
+
+        if (Subject.image?.public_id) {
+            await deleteMedia(Subject.image.public_id);
+        }
+
+        await subject.findByIdAndDelete(id);
+
+        return res.status(200).json({
+            success: true,
+            message: "Subject deleted successfully."
+        });
+
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ success: false, message: "Something went wrong", issue: error.message });
+
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong",
+            issue: error.message
+        });
     }
 };
 
-export const deleteTopic = async (req, res) => {
+export const getSubject = async (req, res) => {
     try {
         const { id } = req.params;
-        const currentTopic = await topic.findById(id);
-        if (!currentTopic) return res.status(404).json({ success: false, message: "No Topic is found" });
-        const mcqsExist = await mcqs.exists({ topic: id });
-        if (mcqsExist) return res.status(400).json({ success: false, message: "Cannot delete this topic because MCQs are attached to it." });
-        if (currentTopic.image?.public_id) await deleteMedia(currentTopic.image.public_id);
-        if (currentTopic.video?.public_id) await deleteMedia(currentTopic.video.public_id);
-        await topic.findByIdAndDelete(id);
-        return res.status(200).json({ success: true, message: "Topic is deleted" });
+
+        const Subject = await subject.findById(id);
+
+        if (!Subject) {
+            return res.status(404).json({
+                success: false,
+                message: "Subject is not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            subject: Subject
+        });
+
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ success: false, message: "Something went wrong", issue: error.message });
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong",
+            issue: error
+        });
     }
 };
 
-export const getAllTopics = async (req, res) => {
+export const getAllSubjects = async (req, res) => {
     try {
-        const topics = await topic.find().populate("subject");
-        return res.status(200).json({ success: true, topics, length: topics.length });
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({ success: false, message: "Something went wrong", issue: error.message });
-    }
-};
+        const Subjects = await subject.find();
 
-export const getTopic = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const Topic = await topic.findById(id).populate("subject");
-        if (!Topic) return res.status(404).json({ success: false, message: "Topic is not found" });
-        return res.status(200).json({ success: true, topic: Topic });
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({ success: false, message: "Something went wrong", issue: error.message });
-    }
-};
+        if (!Subjects || Subjects.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No subject is found"
+            });
+        }
 
-export const subjectTopic = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const Topics = await topic.find({ subject: id });
-        if (!Topics || Topics.length === 0) return res.status(404).json({ success: false, message: "No Topic is found" });
-        return res.status(200).json({ success: true, topic: Topics });
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({ success: false, message: "Something went wrong", issue: error.message });
-    }
-};
+        return res.status(200).json({
+            success: true,
+            subject: Subjects,
+            length: Subjects.length
+        });
 
-export const chapterWiseTopics = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const Topics = await topic.find({ chapter: id });
-        if (!Topics || Topics.length === 0) return res.status(404).json({ success: false, message: "No Topic is found" });
-        return res.status(200).json({ success: true, topic: Topics });
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ success: false, message: "Something went wrong", issue: error.message });
-    }
-};
-
-export const allTopicsBySubjectWise = async (req, res) => {
-    try {
-        const subjects = await subject.find();
-        if (!subjects || subjects.length === 0) return res.status(404).json({ success: false, message: "No subject found" });
-        const data = await Promise.all(subjects.map(async (sub) => {
-            const topics = await topic.find({ subject: sub._id });
-            return { subject: sub, topics: topics || [] };
-        }));
-        return res.status(200).json({ success: true, data });
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({ success: false, message: "Something went wrong", issue: error.message });
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong",
+            issue: error
+        });
     }
 };
 
@@ -131,23 +215,29 @@ export const SSE_Stream = async (req, res) => {
         res.setHeader("Content-Type", "text/event-stream");
         res.setHeader("Cache-Control", "no-cache");
         res.setHeader("Connection", "keep-alive");
-        const stream = topic.watch();
+        res.status(200);
+
+        const stream = subject.watch();
+
         res.write(`data: ${JSON.stringify({ SSE_Stream: "Connected" })}\n\n`);
+
         stream.on("change", async () => {
             try {
-                const Topics = await topic.find();
-                res.write(`data: ${JSON.stringify({ topics: Topics })}\n\n`);
+                const Subjects = await subject.find();
+                res.write(`data: ${JSON.stringify({ subject: Subjects })}\n\n`);
             } catch (error) {
                 console.log(error);
                 res.end();
             }
         });
+
         req.on("close", () => {
             stream.close();
             res.end();
         });
+
     } catch (error) {
-        console.log(`Stream is not working: ${error}`);
+        console.log(`stream is not working: ${error}`);
         res.end();
     }
 };
