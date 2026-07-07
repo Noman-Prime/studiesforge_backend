@@ -8,7 +8,7 @@ topicRouter.post("/create", upload.fields([{ name: "image" }, { name: "video" }]
 topicRouter.put( "/update/:id",upload.fields([{ name: "image", }, { name: "video"} ]), updateTopic );
 topicRouter.delete("/delete/:id", deleteTopic)
 topicRouter.get("/all", getAllTopics)
-topicRouter.get("/subject/:subjectId", subjectTopic)
+topicRouter.get("/subject/:id", subjectTopic)
 topicRouter.get("/by_subject", allTopicsBySubjectWise)
 topicRouter.get("/get/:id", getTopic)
 topicRouter.get("/chapter/:id", chapterWiseTopics)
@@ -23,7 +23,7 @@ export default topicRouter
     http://localhost:5000/api/v1/topic/get/:id
     http://localhost:5000/api/v1/topic/all
     http://localhost:5000/api/v1/topic/by_subject
-    http://localhost:5000/api/v1/topic/subject/:subjectId
+    http://localhost:5000/api/v1/topic/subject/:id
     http://localhost:5000/api/v1/topic/stream  -->SSE-live-Stream
 
     http://localhost:5000/api/v1/topic/chapter/:id
