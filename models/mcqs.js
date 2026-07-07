@@ -42,7 +42,6 @@ const mcqSchema = new mongoose.Schema(
         },
         reason: {
             type: String,
-            required: true,
             trim: true
         },
 
