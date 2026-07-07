@@ -31,7 +31,7 @@ export const createUser = async (req, res) => {
             };
         }
         const user = await User.create({...req.body,  image: imageData,});
-        return res.sendToken(user, 201, res)
+        return sendToken(user, 201, res)
     } catch (error) {
         console.error(error);
 
@@ -66,7 +66,7 @@ export const loginUser = async (req, res) => {
                 message: "Invalid email or password",
             });
         }
-        return res.sendToken(user, 200, res);
+        return sendToken(user, 200, res);
     } catch (error) {
         console.error(error);
         return res.status(500).json({
