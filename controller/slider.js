@@ -12,7 +12,7 @@ export const createSlider = async (req, res) => {
             });
         }
 
-        const text = req.body.text.trim();
+        const text = req.body.text;
 
         const existingSlider = await slider.findOne({
             text: { $regex: new RegExp(`^${text}$`, "i") }

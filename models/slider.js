@@ -7,7 +7,6 @@ const SliderSchema = mongoose.Schema({
     },
     description: {
         type: String,
-        trim: true
     }
 },{timestamps: true})
 
