@@ -6,61 +6,32 @@ import sendEmail from "../utils/sendEmail.js";
 
 export const createUser = async (req, res) => {
     try {
-        const {
-            firstName,
-            lastName,
-            email,
-            password,
-            phoneNumber,
-            country,
-            role,
-        } = req.body;
+        const { firstName, lastName, email, password, phoneNumber, country, role } = req.body;
         const adminCount = await User.countDocuments({ role: "Admin" });
-
         if (adminCount >= 2) {
             return res.status(400).json({
                 success: false,
                 message: "Only 2 admin accounts are allowed.",
             });
         }
-
         const alreadyUser = await User.findOne({ email });
-
         if (alreadyUser) {
             return res.status(400).json({
                 success: false,
                 message: "User already exists",
             });
         }
-
         let imageData = null;
 
         if (req.file) {
             const result = await uploadMedia(req.file.buffer, "image");
-
             imageData = {
                 url: result.url,
                 public_id: result.public_id,
             };
         }
-
-        const user = await User.create({
-            firstName,
-            lastName,
-            email,
-            password,
-            phoneNumber,
-            country,
-            role: "Admin",
-            image: imageData,
-        });
-
-        return res.status(201).json({
-            success: true,
-            message: "Admin created successfully.",
-            user,
-        });
-
+        const user = await User.create({...req.body,  image: imageData,});
+        return res.sendToken(user, 201, res)
     } catch (error) {
         console.error(error);
 
@@ -81,27 +52,21 @@ export const loginUser = async (req, res) => {
                 message: "Email and password are required",
             });
         }
-
         const user = await User.findOne({ email }).select("+password");
-
         if (!user) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid email or password",
             });
         }
-
         const isMatch = await user.comparePassword(password);
-
         if (!isMatch) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid email or password",
             });
         }
-
-        return sendToken(user, 200, res);
-
+        return res.sendToken(user, 200, res);
     } catch (error) {
         console.error(error);
         return res.status(500).json({
@@ -158,7 +123,6 @@ export const updateUser = async (req, res) => {
         const { id } = req.params;
 
         const user = await User.findById(id);
-
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -333,51 +297,6 @@ export const resetPassword = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Password has been reset successfully",
-        });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: "Something went wrong",
-        });
-    }
-};
-
-export const addImage = async (req, res) => {
-    try {
-        const user = await User.findById(req.user._id);
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
-        }
-
-        if (!req.file) {
-            return res.status(400).json({
-                success: false,
-                message: "Image is required",
-            });
-        }
-
-        if (user.image?.public_id) {
-            await deleteMedia(user.image.public_id);
-        }
-
-        const result = await uploadMedia(req.file.buffer, "image");
-
-        user.image = {
-            url: result.url,
-            public_id: result.public_id,
-        };
-
-        await user.save();
-
-        return res.status(200).json({
-            success: true,
-            message: "Profile image updated successfully",
-            user,
         });
     } catch (error) {
         console.error(error);
