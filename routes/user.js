@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { createUser, getMyProfile, loginUser, logout, requestPasswordReset, resetPassword, updatePassword, updateUser } from "../controller/user.js";
+import { addOrUpdateImage, createUser, getMyProfile, loginUser, logout, requestPasswordReset, resetPassword, updatePassword, updateUser } from "../controller/user.js";
 import { isAuthenticated } from "../utils/auth.js";
 const userRouter = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -9,10 +9,11 @@ userRouter.post("/signup", upload.single("image"), createUser);
 userRouter.post("/login", loginUser);
 userRouter.post("/logout", isAuthenticated, logout);
 userRouter.get("/me", isAuthenticated, getMyProfile);
-userRouter.put("/update/:id", isAuthenticated, updateUser);
+userRouter.put("/update/:id", updateUser);
 userRouter.put("/update/password", isAuthenticated, updatePassword);
 userRouter.post("/password/reset/request", requestPasswordReset);
 userRouter.put("/reset/password/:token", resetPassword);
+userRouter.put("/update/image/:id", isAuthenticated, upload.single("image"), addOrUpdateImage )
 export default userRouter;
 
 /*

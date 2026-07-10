@@ -30,7 +30,7 @@ export const createUser = async (req, res) => {
                 public_id: result.public_id,
             };
         }
-        const user = await User.create({...req.body,  image: imageData,});
+        const user = await User.create({ ...req.body, image: imageData, });
         return sendToken(user, 201, res)
     } catch (error) {
         console.error(error);
@@ -122,7 +122,7 @@ export const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const user = await User.findById(id);
+        const user = await User.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -130,37 +130,18 @@ export const updateUser = async (req, res) => {
             });
         }
 
-        user.firstName = req.body.firstName || user.firstName;
-        user.lastName = req.body.lastName || user.lastName;
-        user.email = req.body.email || user.email;
-        user.phoneNumber = req.body.phoneNumber || user.phoneNumber;
-        user.country = req.body.country || user.country;
-
-        if (req.file) {
-            if (user.image?.public_id) {
-                await deleteMedia(user.image.public_id);
-            }
-
-            const result = await uploadMedia(req.file.buffer, "image");
-
-            user.image = {
-                url: result.url,
-                public_id: result.public_id,
-            };
-        }
-
-        await user.save();
-
         return res.status(200).json({
             success: true,
             message: "Profile updated successfully",
             user,
         });
+
     } catch (error) {
         console.error(error);
+
         return res.status(500).json({
             success: false,
-            message: "Something went wrong",
+            message: error.message,
         });
     }
 };
@@ -300,6 +281,55 @@ export const resetPassword = async (req, res) => {
         });
     } catch (error) {
         console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong",
+        });
+    }
+};
+
+export const addOrUpdateImage = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const user = await User.findById(id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User is not found",
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "Please upload an image",
+            });
+        }
+
+        if (user.image?.public_id) {
+            await deleteMedia(user.image.public_id);
+        }
+
+        const result = await uploadMedia(req.file.buffer, "image");
+
+        user.image = {
+            url: result.url,
+            public_id: result.public_id,
+        };
+
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile image updated successfully",
+            user,
+        });
+
+    } catch (error) {
+        console.log(error);
+
         return res.status(500).json({
             success: false,
             message: "Something went wrong",
