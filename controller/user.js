@@ -96,21 +96,14 @@ export const logout = async (req, res) => {
 
 export const getMyProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
-        }
-
         return res.status(200).json({
             success: true,
-            user,
+            user: req.user,
         });
+
     } catch (error) {
         console.error(error);
+
         return res.status(500).json({
             success: false,
             message: "Something went wrong",

@@ -3,7 +3,7 @@ import User from "../models/user.js";
 
 export const isAuthenticated = async (req, res, next) => {
     try {
-        const { token } = req.cookies;
+        const token = req.cookies?.token;
 
         if (!token) {
             return res.status(401).json({
@@ -12,7 +12,10 @@ export const isAuthenticated = async (req, res, next) => {
             });
         }
 
-        const decodedData = jwt.verify(token, process.env.SECRET_KEY);
+        const decodedData = jwt.verify(
+            token,
+            process.env.SECRET_KEY
+        );
 
         const user = await User.findById(decodedData.id);
 
@@ -25,15 +28,17 @@ export const isAuthenticated = async (req, res, next) => {
 
         req.user = user;
         next();
+
     } catch (error) {
         console.error(error);
 
-        return res.status(500).json({
+        return res.status(401).json({
             success: false,
-            message: "Something went wrong",
+            message: "Authentication failed",
         });
     }
 };
+
 
 export const isAdmin = (...roles) => {
     return (req, res, next) => {
