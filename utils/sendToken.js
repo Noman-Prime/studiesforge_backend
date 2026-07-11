@@ -5,7 +5,6 @@ export const sendToken = (user, statusCode, res) => {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        path: "/",
     }
     return res.status(statusCode).cookie("token", token, options).json({
         success: true,
