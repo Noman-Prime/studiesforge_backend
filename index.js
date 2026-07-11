@@ -14,8 +14,6 @@ import userRouter from "./routes/user.js";
 
 const app = express();
 
-app.use(express.json());
-
 app.use(cors({
   origin: [
     "http://localhost:3000",
@@ -24,6 +22,9 @@ app.use(cors({
   ],
   credentials: true,
 }));
+
+app.use(express.json());
+app.use(cookieParser());
 
 app.use(cookieParser());
 
