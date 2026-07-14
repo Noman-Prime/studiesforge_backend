@@ -1,4 +1,5 @@
 import chapter from "../models/chapter.js";
+import topic from "../models/topic.js"
 
 export const createChapter = async (req, res) => {
     try {
