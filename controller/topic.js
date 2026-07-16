@@ -3,20 +3,6 @@ import mcqs from "../models/mcqs.js";
 
 export const createTopic = async (req, res) => {
     try {
-        const {
-            subject,
-            chapter,
-            title,
-            isPublished
-        } = req.body;
-
-        if (!subject || !chapter || !title) {
-            return res.status(400).json({
-                success: false,
-                message: "Please fill all required fields."
-            });
-        }
-
         let image = {
             public_id: "",
             url: ""
@@ -28,274 +14,225 @@ export const createTopic = async (req, res) => {
         };
 
         if (req.files?.image?.length) {
-            const uploadedImage = await uploadMedia(req.files.image[0].buffer, "image");
+            const imageData = await uploadMedia(req.files.image[0].buffer, "image");
 
             image = {
-                public_id: uploadedImage.public_id,
-                url: uploadedImage.url
+                public_id: imageData.public_id,
+                url: imageData.url
             };
         }
 
         if (req.files?.video?.length) {
-            const uploadedVideo = await uploadMedia(req.files.video[0].buffer, "video");
+            const videoData = await uploadMedia(req.files.video[0].buffer, "video");
 
             video = {
-                public_id: uploadedVideo.public_id,
-                url: uploadedVideo.url
+                public_id: videoData.public_id,
+                url: videoData.url
             };
         }
 
-        let content = [];
-
-        if (req.body.content) {
-            content =
-                typeof req.body.content === "string"
-                    ? JSON.parse(req.body.content)
-                    : req.body.content;
-        }
-
-        const createdTopic = await topic.create({
-            subject,
-            chapter,
-            title,
+        const Topic = await topic.create({
+            ...req.body,
             image,
             video,
-            content,
-            isPublished:
-                isPublished === undefined
-                    ? true
-                    : isPublished === "true" || isPublished === true
+            content: req.body.content
+                ? JSON.parse(req.body.content)
+                : []
         });
 
-        await createdTopic.populate([
-            {
-                path: "subject"
-            },
-            {
-                path: "chapter"
-            }
-        ]);
+        if (!Topic) {
+            return res.status(404).json({
+                success: false,
+                message: "Topic is not created"
+            });
+        }
 
         return res.status(201).json({
             success: true,
-            message: "Topic created successfully.",
-            topic: createdTopic
+            topic: Topic
         });
 
     } catch (error) {
+        console.log(error);
         return res.status(500).json({
             success: false,
-            message: "Something went wrong.",
-            issue: error.message
+            message: "Something went wrong",
+            issue: error
         });
     }
 };
 
 export const updateTopic = async (req, res) => {
     try {
-        const { id } = req.params;
+        const Topic = await topic.findById(req.params.id);
 
-        const existingTopic = await topic.findById(id);
-
-        if (!existingTopic) {
+        if (!Topic) {
             return res.status(404).json({
                 success: false,
-                message: "Topic not found."
+                message: "Topic not found"
             });
         }
 
-        const updateData = {};
-
-        if (req.body.subject) updateData.subject = req.body.subject;
-        if (req.body.chapter) updateData.chapter = req.body.chapter;
-        if (req.body.title) updateData.title = req.body.title;
+        const updateData = {
+            ...req.body
+        };
 
         if (req.body.content) {
-            updateData.content =
-                typeof req.body.content === "string"
-                    ? JSON.parse(req.body.content)
-                    : req.body.content;
-        }
-
-        if (req.body.isPublished !== undefined) {
-            updateData.isPublished =
-                req.body.isPublished === "true" ||
-                req.body.isPublished === true;
+            updateData.content = JSON.parse(req.body.content);
         }
 
         if (req.files?.image?.length) {
-            if (existingTopic.image?.public_id) {
-                await deleteMedia(existingTopic.image.public_id);
+            if (Topic.image.public_id) {
+                await deleteMedia(Topic.image.public_id);
             }
 
-            const uploadedImage = await uploadMedia(
-                req.files.image[0].buffer,
-                "image"
-            );
+            const imageData = await uploadMedia(req.files.image[0].buffer, "image");
 
             updateData.image = {
-                public_id: uploadedImage.public_id,
-                url: uploadedImage.url
+                public_id: imageData.public_id,
+                url: imageData.url
             };
         }
 
         if (req.files?.video?.length) {
-            if (existingTopic.video?.public_id) {
-                await deleteMedia(existingTopic.video.public_id);
+            if (Topic.video.public_id) {
+                await deleteMedia(Topic.video.public_id);
             }
 
-            const uploadedVideo = await uploadMedia(
-                req.files.video[0].buffer,
-                "video"
-            );
+            const videoData = await uploadMedia(req.files.video[0].buffer, "video");
 
             updateData.video = {
-                public_id: uploadedVideo.public_id,
-                url: uploadedVideo.url
+                public_id: videoData.public_id,
+                url: videoData.url
             };
         }
 
         const updatedTopic = await topic.findByIdAndUpdate(
-            id,
+            req.params.id,
             updateData,
             {
                 new: true,
                 runValidators: true
             }
-        ).populate([
-            {
-                path: "subject"
-            },
-            {
-                path: "chapter"
-            }
-        ]);
+        );
 
         return res.status(200).json({
             success: true,
-            message: "Topic updated successfully.",
             topic: updatedTopic
         });
 
     } catch (error) {
+        console.log(error);
         return res.status(500).json({
             success: false,
-            message: "Something went wrong.",
-            issue: error.message
+            message: "Something went wrong",
+            issue: error
         });
     }
 };
 
 export const deleteTopic = async (req, res) => {
     try {
-        const { id } = req.params;
+        const Topic = await topic.findById(req.params.id);
 
-        const existingTopic = await topic.findById(id);
-
-        if (!existingTopic) {
+        if (!Topic) {
             return res.status(404).json({
                 success: false,
-                message: "Topic not found."
+                message: "Topic not found"
             });
         }
 
         const totalMcqs = await mcqs.countDocuments({
-            topic: id
+            topic: req.params.id
         });
 
         if (totalMcqs > 0) {
             return res.status(400).json({
                 success: false,
-                message: "Delete all MCQs under this topic before deleting it."
+                message: "Delete all MCQs under this topic first"
             });
         }
 
-        if (existingTopic.image?.public_id) {
-            await deleteMedia(existingTopic.image.public_id);
+        if (Topic.image.public_id) {
+            await deleteMedia(Topic.image.public_id);
         }
 
-        if (existingTopic.video?.public_id) {
-            await deleteMedia(existingTopic.video.public_id);
+        if (Topic.video.public_id) {
+            await deleteMedia(Topic.video.public_id);
         }
 
-        await topic.findByIdAndDelete(id);
+        await topic.findByIdAndDelete(req.params.id);
 
         return res.status(200).json({
             success: true,
-            message: "Topic deleted successfully."
+            message: "Topic deleted successfully"
         });
 
     } catch (error) {
+        console.log(error);
         return res.status(500).json({
             success: false,
-            message: "Something went wrong.",
-            issue: error.message
+            message: "Something went wrong",
+            issue: error
         });
     }
 };
 
 export const getTopic = async (req, res) => {
     try {
-
-        const { id } = req.params;
-
-        const foundTopic = await topic
-            .findByIdAndUpdate(
-                id,
-                {
-                    $inc: {
-                        views: 1
-                    }
-                },
-                {
-                    new: true
+        const Topic = await topic.findByIdAndUpdate(
+            req.params.id,
+            {
+                $inc: {
+                    views: 1
                 }
-            )
-            .populate("subject")
-            .populate("chapter");
+            },
+            {
+                new: true
+            }
+        );
 
-        if (!foundTopic) {
+        if (!Topic) {
             return res.status(404).json({
                 success: false,
-                message: "Topic not found."
+                message: "Topic not found"
             });
         }
 
         return res.status(200).json({
             success: true,
-            topic: foundTopic
+            topic: Topic
         });
 
     } catch (error) {
-
+        console.log(error);
         return res.status(500).json({
             success: false,
-            message: "Something went wrong.",
-            issue: error.message
+            message: "Something went wrong",
+            issue: error
         });
-
     }
 };
 
 export const chapterTopics = async (req, res) => {
     try {
-        const { id } = req.params;
-
-        const topics = await topic
-            .find({ chapter: id })
-            .sort({ title: 1 });
+        const Topics = await topic.find({
+            chapter: req.params.id
+        }).sort({
+            title: 1
+        });
 
         return res.status(200).json({
             success: true,
-            length: topics.length,
-            topics
+            topics: Topics
         });
 
     } catch (error) {
+        console.log(error);
         return res.status(500).json({
             success: false,
-            message: "Something went wrong.",
-            issue: error.message
+            message: "Something went wrong",
+            issue: error
         });
     }
 };
