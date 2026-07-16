@@ -1,30 +1,16 @@
-import subject from "../models/subjects.js";
 import topic from "../models/topic.js";
 import mcqs from "../models/mcqs.js";
-import { deleteMedia, uploadMedia } from "../utils/cloudinary.js";
-
-const parseJSON = (value, fallback) => {
-    if (!value) return fallback;
-    if (typeof value === "object") return value;
-    try {
-        return JSON.parse(value);
-    } catch {
-        return fallback;
-    }
-};
 
 export const createTopic = async (req, res) => {
     try {
         const {
-            subject: subjectId,
+            subject,
             chapter,
             title,
-            shortDescription,
-            summary,
             isPublished
         } = req.body;
 
-        if (!subjectId || !chapter || !title || !shortDescription) {
+        if (!subject || !chapter || !title) {
             return res.status(400).json({
                 success: false,
                 message: "Please fill all required fields."
@@ -59,19 +45,22 @@ export const createTopic = async (req, res) => {
             };
         }
 
-        const sections = parseJSON(req.body.sections, []);
-        const keyPoints = parseJSON(req.body.keyPoints, []);
+        let content = [];
+
+        if (req.body.content) {
+            content =
+                typeof req.body.content === "string"
+                    ? JSON.parse(req.body.content)
+                    : req.body.content;
+        }
 
         const createdTopic = await topic.create({
-            subject: subjectId,
+            subject,
             chapter,
             title,
-            shortDescription,
-            sections,
-            summary,
-            keyPoints,
             image,
             video,
+            content,
             isPublished:
                 isPublished === undefined
                     ? true
@@ -92,6 +81,7 @@ export const createTopic = async (req, res) => {
             message: "Topic created successfully.",
             topic: createdTopic
         });
+
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -119,24 +109,18 @@ export const updateTopic = async (req, res) => {
         if (req.body.subject) updateData.subject = req.body.subject;
         if (req.body.chapter) updateData.chapter = req.body.chapter;
         if (req.body.title) updateData.title = req.body.title;
-        if (req.body.shortDescription)
-            updateData.shortDescription = req.body.shortDescription;
 
-        if (req.body.summary !== undefined)
-            updateData.summary = req.body.summary;
+        if (req.body.content) {
+            updateData.content =
+                typeof req.body.content === "string"
+                    ? JSON.parse(req.body.content)
+                    : req.body.content;
+        }
 
         if (req.body.isPublished !== undefined) {
             updateData.isPublished =
                 req.body.isPublished === "true" ||
                 req.body.isPublished === true;
-        }
-
-        if (req.body.sections) {
-            updateData.sections = parseJSON(req.body.sections, []);
-        }
-
-        if (req.body.keyPoints) {
-            updateData.keyPoints = parseJSON(req.body.keyPoints, []);
         }
 
         if (req.files?.image?.length) {
@@ -171,25 +155,28 @@ export const updateTopic = async (req, res) => {
             };
         }
 
-        const updatedTopic = await topic
-            .findByIdAndUpdate(id, updateData, {
+        const updatedTopic = await topic.findByIdAndUpdate(
+            id,
+            updateData,
+            {
                 new: true,
                 runValidators: true
-            })
-            .populate([
-                {
-                    path: "subject"
-                },
-                {
-                    path: "chapter"
-                }
-            ]);
+            }
+        ).populate([
+            {
+                path: "subject"
+            },
+            {
+                path: "chapter"
+            }
+        ]);
 
         return res.status(200).json({
             success: true,
             message: "Topic updated successfully.",
             topic: updatedTopic
         });
+
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -198,6 +185,7 @@ export const updateTopic = async (req, res) => {
         });
     }
 };
+
 export const deleteTopic = async (req, res) => {
     try {
         const { id } = req.params;
@@ -218,7 +206,7 @@ export const deleteTopic = async (req, res) => {
         if (totalMcqs > 0) {
             return res.status(400).json({
                 success: false,
-                message: `This topic contains ${totalMcqs} MCQ(s). Please delete those MCQs before deleting the topic.`
+                message: "Delete all MCQs under this topic before deleting it."
             });
         }
 
@@ -246,39 +234,23 @@ export const deleteTopic = async (req, res) => {
     }
 };
 
-export const getAllTopics = async (req, res) => {
-    try {
-
-        const topics = await topic
-            .find()
-            .populate("subject")
-            .populate("chapter")
-            .sort({ createdAt: -1 });
-
-        return res.status(200).json({
-            success: true,
-            length: topics.length,
-            topics
-        });
-
-    } catch (error) {
-
-        return res.status(500).json({
-            success: false,
-            message: "Something went wrong.",
-            issue: error.message
-        });
-
-    }
-};
-
 export const getTopic = async (req, res) => {
     try {
 
         const { id } = req.params;
 
         const foundTopic = await topic
-            .findById(id)
+            .findByIdAndUpdate(
+                id,
+                {
+                    $inc: {
+                        views: 1
+                    }
+                },
+                {
+                    new: true
+                }
+            )
             .populate("subject")
             .populate("chapter");
 
@@ -288,12 +260,6 @@ export const getTopic = async (req, res) => {
                 message: "Topic not found."
             });
         }
-
-        await topic.findByIdAndUpdate(id, {
-            $inc: {
-                views: 1
-            }
-        });
 
         return res.status(200).json({
             success: true,
@@ -310,93 +276,21 @@ export const getTopic = async (req, res) => {
 
     }
 };
-export const subjectTopic = async (req, res) => {
+
+export const chapterTopics = async (req, res) => {
     try {
         const { id } = req.params;
 
         const topics = await topic
-            .find({
-                subject: id,
-                isPublished: true
-            })
-            .populate("subject")
-            .populate("chapter")
-            .sort({ createdAt: 1 });
+            .find({ chapter: id })
+            .sort({ title: 1 });
 
         return res.status(200).json({
             success: true,
             length: topics.length,
             topics
         });
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Something went wrong.",
-            issue: error.message
-        });
-    }
-};
 
-export const chapterWiseTopics = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const topics = await topic
-            .find({
-                chapter: id,
-                isPublished: true
-            })
-            .populate("subject")
-            .populate("chapter")
-            .sort({ createdAt: 1 });
-
-        return res.status(200).json({
-            success: true,
-            length: topics.length,
-            topics
-        });
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Something went wrong.",
-            issue: error.message
-        });
-    }
-};
-
-export const allTopicsBySubjectWise = async (req, res) => {
-    try {
-        const subjects = await subject.find().sort({ title: 1 });
-
-        if (!subjects.length) {
-            return res.status(404).json({
-                success: false,
-                message: "No subjects found."
-            });
-        }
-
-        const data = await Promise.all(
-            subjects.map(async (sub) => {
-                const topics = await topic
-                    .find({
-                        subject: sub._id,
-                        isPublished: true
-                    })
-                    .populate("chapter")
-                    .sort({ createdAt: 1 });
-
-                return {
-                    subject: sub,
-                    totalTopics: topics.length,
-                    topics
-                };
-            })
-        );
-
-        return res.status(200).json({
-            success: true,
-            data
-        });
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -433,16 +327,20 @@ export const SSE_Stream = async (req, res) => {
                 res.write(
                     `data: ${JSON.stringify({
                         success: true,
-                        topics
+                        topics,
+                        length: topics.length
                     })}\n\n`
                 );
+
             } catch (error) {
+
                 res.write(
                     `data: ${JSON.stringify({
                         success: false,
-                        message: error.message
+                        message: "Failed to fetch topics."
                     })}\n\n`
                 );
+
             }
         });
 
@@ -450,7 +348,14 @@ export const SSE_Stream = async (req, res) => {
             await changeStream.close();
             res.end();
         });
+
     } catch (error) {
-        res.status(500).end();
+
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong.",
+            issue: error.message
+        });
+
     }
 };

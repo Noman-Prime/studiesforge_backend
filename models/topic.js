@@ -11,16 +11,11 @@ const tableSchema = new mongoose.Schema({
     }
 }, { _id: false });
 
-const sectionSchema = new mongoose.Schema({
-    heading: {
+const contentSchema = new mongoose.Schema({
+    subHeading: {
         type: String,
         required: true,
         trim: true
-    },
-    subHeading: {
-        type: String,
-        trim: true,
-        default: ""
     },
     description: {
         type: String,
@@ -34,21 +29,6 @@ const sectionSchema = new mongoose.Schema({
     table: {
         type: tableSchema,
         default: () => ({})
-    },
-    tip: {
-        type: String,
-        trim: true,
-        default: ""
-    },
-    important: {
-        type: String,
-        trim: true,
-        default: ""
-    },
-    note: {
-        type: String,
-        trim: true,
-        default: ""
     },
     image: {
         public_id: {
@@ -84,25 +64,6 @@ const topicSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    shortDescription: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    sections: {
-        type: [sectionSchema],
-        required: true,
-        default: []
-    },
-    summary: {
-        type: String,
-        trim: true,
-        default: ""
-    },
-    keyPoints: {
-        type: [String],
-        default: []
-    },
     image: {
         public_id: {
             type: String,
@@ -123,6 +84,10 @@ const topicSchema = new mongoose.Schema({
             default: ""
         }
     },
+    content: {
+        type: [contentSchema],
+        default: []
+    },
     views: {
         type: Number,
         default: 0
@@ -135,7 +100,7 @@ const topicSchema = new mongoose.Schema({
     timestamps: true
 });
 
-topicSchema.index({ title: "text", shortDescription: "text" });
+topicSchema.index({ title: "text" });
 
 const Topic = mongoose.model("Topic", topicSchema);
 
