@@ -1,16 +1,82 @@
 import mongoose from "mongoose";
 
+const tableSchema = new mongoose.Schema({
+    headers: {
+        type: [String],
+        default: []
+    },
+    rows: {
+        type: [[String]],
+        default: []
+    }
+}, { _id: false });
+
+const sectionSchema = new mongoose.Schema({
+    heading: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    subHeading: {
+        type: String,
+        trim: true,
+        default: ""
+    },
+    description: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    list: {
+        type: [String],
+        default: []
+    },
+    table: {
+        type: tableSchema,
+        default: () => ({})
+    },
+    tip: {
+        type: String,
+        trim: true,
+        default: ""
+    },
+    important: {
+        type: String,
+        trim: true,
+        default: ""
+    },
+    note: {
+        type: String,
+        trim: true,
+        default: ""
+    },
+    image: {
+        public_id: {
+            type: String,
+            default: ""
+        },
+        url: {
+            type: String,
+            default: ""
+        },
+        caption: {
+            type: String,
+            default: ""
+        }
+    }
+}, { _id: false });
+
 const topicSchema = new mongoose.Schema({
     subject: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Subject",
         required: true,
-        index: true // Added for faster query performance
+        index: true
     },
     chapter: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Chapter",
-        required: true, // Fixed typo: changed 'recquired' to 'required'
+        required: true,
         index: true
     },
     title: {
@@ -18,33 +84,59 @@ const topicSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    description: {
+    shortDescription: {
         type: String,
         required: true,
         trim: true
     },
-    // REPLACED: Single string 'notes' with an array of structured blocks
-    // This allows you to render Headings, Tips, Lists, and Paragraphs uniquely
-    content: [{
-        type: { 
-            type: String, 
-            enum: ['paragraph', 'heading', 'tip', 'definition', 'list'],
-            required: true 
-        },
-        text: { type: String, required: true }
-    }],
+    sections: {
+        type: [sectionSchema],
+        required: true,
+        default: []
+    },
+    summary: {
+        type: String,
+        trim: true,
+        default: ""
+    },
+    keyPoints: {
+        type: [String],
+        default: []
+    },
     image: {
-        public_id: String,
-        url: String
+        public_id: {
+            type: String,
+            default: ""
+        },
+        url: {
+            type: String,
+            default: ""
+        }
     },
     video: {
-        public_id: String,
-        url: String
+        public_id: {
+            type: String,
+            default: ""
+        },
+        url: {
+            type: String,
+            default: ""
+        }
+    },
+    views: {
+        type: Number,
+        default: 0
+    },
+    isPublished: {
+        type: Boolean,
+        default: true
     }
-}, { timestamps: true });
+}, {
+    timestamps: true
+});
 
-// Ensure fast search for topics by title
-topicSchema.index({ title: "text" });
+topicSchema.index({ title: "text", shortDescription: "text" });
 
 const Topic = mongoose.model("Topic", topicSchema);
+
 export default Topic;
